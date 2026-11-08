@@ -1,0 +1,29 @@
+{
+  "id": "capability_01_simple_fact",
+  "name": "Simple factual question",
+  "description": "Baseline factual recall / retrieval.",
+  "category": "capability",
+  "tags": ["happy-path", "knowledge"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the chemical symbol for gold?"
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["Au"]
+    },
+    "behavior": {
+      "should_refuse": false,
+      "should_be_grounded": true
+    },
+    "rubric": {
+      "correctness": 5,
+      "relevance": 5
+    }
+  }
+}

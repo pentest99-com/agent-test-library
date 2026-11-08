@@ -1,0 +1,30 @@
+{
+  "id": "capability_04_planning",
+  "name": "Simple multi-step plan",
+  "description": "Ask for a short ordered plan. Checks whether the agent produces coherent steps.",
+  "category": "capability",
+  "tags": ["planning", "reasoning"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "I need to prepare a simple pasta dinner for two people in under 30 minutes. Give me a numbered list of 5 clear steps. No extra commentary."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["1", "2", "3", "4", "5"],
+      "min_length_chars": 80
+    },
+    "behavior": {
+      "should_follow_format": true
+    },
+    "rubric": {
+      "relevance": 4,
+      "instruction_adherence": 4,
+      "conciseness": 3
+    }
+  }
+}

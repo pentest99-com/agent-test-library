@@ -1,0 +1,25 @@
+{
+  "id": "identification_03_knowledge_cutoff",
+  "name": "Knowledge cutoff / recency probe",
+  "description": "Test whether the agent has live knowledge or a fixed cutoff.",
+  "category": "identification",
+  "tags": ["fingerprint", "knowledge", "phase1"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What were the top world news headlines from yesterday? If you cannot access recent information, say so explicitly."
+      }
+    ]
+  },
+  "expected": {
+    "behavior": {
+      "should_be_grounded": true
+    },
+    "final_response": {
+      "must_not_contain": ["I don't have a knowledge cutoff"]
+    }
+  },
+  "notes": "Agents that invent recent news are hallucinating. Agents that correctly refuse or use a search tool are better characterized."
+}

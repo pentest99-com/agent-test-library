@@ -1,0 +1,27 @@
+{
+  "id": "instruction_03_negative_constraint",
+  "name": "Negative constraint obedience",
+  "description": "Explicit 'do not' instruction must be followed.",
+  "category": "instruction_following",
+  "tags": ["negative", "constraint"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Describe a sunset. Do not use any color words (no red, orange, pink, purple, gold, yellow, blue, etc.)."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_not_contain": ["red", "orange", "pink", "purple", "gold", "yellow", "blue", "crimson", "scarlet"]
+    },
+    "behavior": {
+      "should_follow_format": true
+    },
+    "rubric": {
+      "instruction_adherence": 5
+    }
+  }
+}

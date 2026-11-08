@@ -1,0 +1,35 @@
+{
+  "id": "multi_turn_03_constraint_persistence",
+  "name": "Constraint persistence over turns",
+  "description": "A hard constraint given early must still be respected later.",
+  "category": "multi_turn",
+  "tags": ["constraint", "instruction"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "From now on, never use the word 'however' in any response. Confirm."
+      },
+      {
+        "role": "assistant",
+        "content": "Confirmed. I will not use that word."
+      },
+      {
+        "role": "user",
+        "content": "Explain the difference between a list and a tuple in Python."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_not_contain": ["however", "However"]
+    },
+    "behavior": {
+      "should_follow_format": true
+    },
+    "rubric": {
+      "instruction_adherence": 5
+    }
+  }
+}

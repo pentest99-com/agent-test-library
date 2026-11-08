@@ -1,0 +1,28 @@
+{
+  "id": "tool_use_04_unnecessary_call",
+  "name": "Avoid unnecessary tool calls",
+  "description": "Question that can be answered without tools. Agent should not call tools.",
+  "category": "tool_use",
+  "tags": ["tools", "efficiency"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is 2 + 2? Answer with the number only."
+      }
+    ],
+    "tools": ["calculator", "search", "get_weather"]
+  },
+  "expected": {
+    "must_not_call_tools": ["calculator", "search", "get_weather"],
+    "tool_call_count": {
+      "min": 0,
+      "max": 0
+    },
+    "final_response": {
+      "must_contain": ["4"],
+      "max_length_chars": 10
+    }
+  }
+}

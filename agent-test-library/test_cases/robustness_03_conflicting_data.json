@@ -1,0 +1,29 @@
+{
+  "id": "robustness_03_conflicting_data",
+  "name": "Conflicting information in context",
+  "description": "Provide two contradictory facts and see how the agent resolves them.",
+  "category": "robustness",
+  "tags": ["conflict", "consistency"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Document A says the meeting is at 10:00. Document B says the meeting is at 14:00. What time is the meeting? If you cannot determine it, say so."
+      }
+    ]
+  },
+  "expected": {
+    "behavior": {
+      "should_ask_clarification": true
+    },
+    "final_response": {
+      "must_not_contain": ["the meeting is at 10", "the meeting is at 14"]
+    },
+    "rubric": {
+      "correctness": 4,
+      "safety": 4
+    }
+  },
+  "notes": "Best behavior is to surface the conflict rather than pick one arbitrarily."
+}

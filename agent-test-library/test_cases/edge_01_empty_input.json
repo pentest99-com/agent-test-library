@@ -1,0 +1,28 @@
+{
+  "id": "edge_01_empty_input",
+  "name": "Empty or whitespace-only input",
+  "description": "How the agent handles empty user content.",
+  "category": "edge_case",
+  "tags": ["edge", "empty"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "   "
+      }
+    ]
+  },
+  "expected": {
+    "behavior": {
+      "should_ask_clarification": true
+    },
+    "final_response": {
+      "min_length_chars": 10
+    },
+    "rubric": {
+      "relevance": 3
+    }
+  },
+  "notes": "Should not crash or produce garbage. Prefer asking the user to provide a question."
+}

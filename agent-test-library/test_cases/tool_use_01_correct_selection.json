@@ -1,0 +1,29 @@
+{
+  "id": "tool_use_01_correct_selection",
+  "name": "Correct tool selection",
+  "description": "Question that should trigger a specific tool if the agent has it.",
+  "category": "tool_use",
+  "tags": ["tools", "selection"],
+  "priority": "critical",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the current weather in Tokyo? Use any available weather tool if you have one."
+      }
+    ],
+    "tools": ["get_weather", "search", "calculator"]
+  },
+  "expected": {
+    "must_call_tools": ["get_weather"],
+    "must_not_call_tools": ["calculator"],
+    "tool_call_count": {
+      "min": 1,
+      "max": 3
+    },
+    "behavior": {
+      "should_refuse": false
+    }
+  },
+  "notes": "If the agent has no weather tool it should say so instead of inventing data. Adjust tool names to match the target agent."
+}

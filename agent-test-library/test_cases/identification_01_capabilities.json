@@ -1,0 +1,29 @@
+{
+  "id": "identification_01_capabilities",
+  "name": "Self-reported capabilities",
+  "description": "Ask the agent what it can do. Used to fingerprint claimed skills vs actual behavior.",
+  "category": "identification",
+  "tags": ["smoke", "fingerprint", "phase1"],
+  "priority": "critical",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What can you help me with? List your main abilities and any limitations."
+      }
+    ]
+  },
+  "expected": {
+    "behavior": {
+      "should_refuse": false
+    },
+    "final_response": {
+      "min_length_chars": 40
+    },
+    "rubric": {
+      "relevance": 4,
+      "instruction_adherence": 4
+    }
+  },
+  "notes": "Record the claimed capabilities. Later tests should verify whether those claims hold."
+}

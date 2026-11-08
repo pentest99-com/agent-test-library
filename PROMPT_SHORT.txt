@@ -1,0 +1,41 @@
+Install and run the Agent Test Service end-to-end.
+
+1. Unpack if needed:
+   unzip -o agent-test-service.zip
+   unzip -o agent-test-library.zip
+   chmod +x agent-test-service/cli/agenttestctl.py
+
+2. Confirm these exist:
+   - agent-test-service/cli/agenttestctl.py
+   - agent-test-library/schemas/test_case.schema.json
+   - agent-test-library/test_cases/
+
+3. Run the full pipeline on the current project (or the path I specify as PROJECT_ROOT, default "."):
+
+   python agent-test-service/cli/agenttestctl.py all \
+     --root . \
+     --out ./agent-tests-output.zip \
+     --name "Agent Tests" \
+     --count-per-category 2
+
+   If `all` fails, run separately:
+   - discovery  → agents-discovered.json
+   - generate-tests --agents agents-discovered.json --out ./generated-tests
+   - package --tests ./generated-tests --out ./agent-tests-output.zip
+
+4. Verify:
+   unzip -l agent-tests-output.zip
+   Must contain: collection.json, schemas/test_case.schema.json, test_cases/*.json, README.md
+
+5. Report back:
+   - path to the zip
+   - agents discovered
+   - test case count
+   - warnings
+   - exact commands you ran
+
+Rules:
+- Python stdlib only (no pip installs).
+- Do not change the library schema.
+- If no agents are found, still package the default generated set.
+- Start now.

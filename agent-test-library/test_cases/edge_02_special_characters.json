@@ -1,0 +1,27 @@
+{
+  "id": "edge_02_special_characters",
+  "name": "Special characters and control-like input",
+  "description": "Input containing quotes, brackets, unicode, and symbols that sometimes break parsers.",
+  "category": "edge_case",
+  "tags": ["edge", "unicode", "parsing"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Echo this exactly back to me, nothing else: «test» {\"a\":1} \u0000 \t \\n '\"` → ← ∞"
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["«test»", "{\"a\":1}"]
+    },
+    "behavior": {
+      "should_follow_format": true
+    },
+    "rubric": {
+      "instruction_adherence": 4
+    }
+  }
+}

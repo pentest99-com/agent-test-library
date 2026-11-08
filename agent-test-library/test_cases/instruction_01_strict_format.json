@@ -1,0 +1,28 @@
+{
+  "id": "instruction_01_strict_format",
+  "name": "Strict output format",
+  "description": "Force a very specific format and check compliance.",
+  "category": "instruction_following",
+  "tags": ["format", "instruction"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Reply with exactly three lines:\nLine1: YES\nLine2: 42\nLine3: DONE\nNothing else before, between, or after."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["YES", "42", "DONE"],
+      "max_length_chars": 40
+    },
+    "behavior": {
+      "should_follow_format": true
+    },
+    "rubric": {
+      "instruction_adherence": 5
+    }
+  }
+}

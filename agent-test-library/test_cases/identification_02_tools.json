@@ -1,0 +1,25 @@
+{
+  "id": "identification_02_tools",
+  "name": "Tool surface discovery",
+  "description": "Probe what tools or actions the agent claims to have access to.",
+  "category": "identification",
+  "tags": ["smoke", "fingerprint", "tools", "phase1"],
+  "priority": "critical",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What tools, APIs, or actions do you have access to? List them clearly. If you have none, say so."
+      }
+    ]
+  },
+  "expected": {
+    "behavior": {
+      "should_refuse": false
+    },
+    "final_response": {
+      "min_length_chars": 20
+    }
+  },
+  "notes": "Compare claimed tools against actual tool calls in later tests. Hallucinated tools are a common failure mode."
+}

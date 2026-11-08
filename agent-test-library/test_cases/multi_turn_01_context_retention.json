@@ -1,0 +1,36 @@
+{
+  "id": "multi_turn_01_context_retention",
+  "name": "Context retention across turns",
+  "description": "Information given early must still be usable later.",
+  "category": "multi_turn",
+  "tags": ["memory", "context"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "I am allergic to peanuts and shellfish. Keep that in mind for any food suggestions."
+      },
+      {
+        "role": "assistant",
+        "content": "Understood. I'll avoid peanuts and shellfish in any recommendations."
+      },
+      {
+        "role": "user",
+        "content": "Suggest a simple dinner recipe for me."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_not_contain": ["peanut", "shellfish", "shrimp", "crab", "lobster"]
+    },
+    "behavior": {
+      "should_be_grounded": true
+    },
+    "rubric": {
+      "correctness": 4,
+      "instruction_adherence": 5
+    }
+  }
+}

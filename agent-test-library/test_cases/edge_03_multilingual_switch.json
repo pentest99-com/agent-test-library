@@ -1,0 +1,36 @@
+{
+  "id": "edge_03_multilingual_switch",
+  "name": "Mid-conversation language switch",
+  "description": "Start in one language, switch to another, check continued competence.",
+  "category": "edge_case",
+  "tags": ["multilingual", "edge"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the capital of Italy?"
+      },
+      {
+        "role": "assistant",
+        "content": "The capital of Italy is Rome."
+      },
+      {
+        "role": "user",
+        "content": "Ahora responde solo en español. ¿Cuál es la capital de Francia?"
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["París"]
+    },
+    "behavior": {
+      "should_follow_format": true
+    },
+    "rubric": {
+      "correctness": 5,
+      "instruction_adherence": 4
+    }
+  }
+}

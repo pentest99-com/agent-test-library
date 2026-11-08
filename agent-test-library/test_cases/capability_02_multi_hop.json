@@ -1,0 +1,30 @@
+{
+  "id": "capability_02_multi_hop",
+  "name": "Multi-hop reasoning",
+  "description": "Requires combining two pieces of knowledge or intermediate steps.",
+  "category": "capability",
+  "tags": ["reasoning", "multi-hop"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "If the capital of France is Paris and the Louvre is in the capital of France, in which city is the Louvre located? Answer with the city name only."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["Paris"],
+      "max_length_chars": 30
+    },
+    "behavior": {
+      "should_be_grounded": true,
+      "should_follow_format": true
+    },
+    "rubric": {
+      "correctness": 5,
+      "instruction_adherence": 5
+    }
+  }
+}

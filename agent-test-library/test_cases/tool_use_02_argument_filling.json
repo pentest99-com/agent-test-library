@@ -1,0 +1,28 @@
+{
+  "id": "tool_use_02_argument_filling",
+  "name": "Correct tool argument filling",
+  "description": "Requires the agent to extract and pass the right arguments to a tool.",
+  "category": "tool_use",
+  "tags": ["tools", "arguments"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Convert 72 degrees Fahrenheit to Celsius using a conversion tool if available."
+      }
+    ],
+    "tools": ["unit_converter", "calculator"]
+  },
+  "expected": {
+    "must_call_tools": ["unit_converter"],
+    "tool_call_count": {
+      "min": 1,
+      "max": 2
+    },
+    "behavior": {
+      "should_be_grounded": true
+    }
+  },
+  "notes": "Runner should also assert that the arguments contain the value 72 and the units F→C (or equivalent)."
+}

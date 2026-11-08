@@ -1,0 +1,379 @@
+openapi: 3.1.0
+info:
+  title: Agent Test Service
+  version: 1.0.0
+  description: |
+    Minimal API for:
+      1. /discovery     – find agents in source code
+      2. /generate-tests – create test cases for discovered agents
+      3. /package       – zip the generated tests for sharing
+
+    All responses are JSON. No authentication is defined in this contract
+    (add your own gateway layer).
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /discovery:
+    post:
+      operationId: discoverAgents
+      summary: Search source code for agent definitions
+      description: |
+        Scans a directory (or list of files) for AI agent entry points.
+        Heuristics: classes/functions that call LLM clients, register tools,
+        expose system prompts, or match common agent framework patterns
+        (LangChain, CrewAI, OpenAI Agents SDK, custom Agent classes, etc.).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoveryRequest'
+      responses:
+        '200':
+          description: Agents found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /generate-tests:
+    post:
+      operationId: generateTests
+      summary: Generate test cases for one or more agents
+      description: |
+        Takes discovered agent descriptors (or explicit agent ids) and
+        produces test cases that conform to the Agent Test Case schema
+        (see schemas/test_case.schema.json in the library).
+        Categories can be filtered; defaults to a balanced starter set.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateTestsRequest'
+      responses:
+        '200':
+          description: Generated test cases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateTestsResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /package:
+    post:
+      operationId: packageTests
+      summary: Package test cases into a shareable zip
+      description: |
+        Accepts a list of test case objects (or paths to previously
+        generated files) and returns a zip archive containing:
+          - collection.json
+          - schemas/test_case.schema.json
+          - test_cases/*.json
+          - README.md
+        The zip is the unit that can be handed to another team or loaded
+        by a consumer application.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackageRequest'
+      responses:
+        '200':
+          description: Zip file
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageResponse'
+              description: |
+                When Accept: application/json is sent, returns metadata
+                + base64-encoded zip instead of raw binary.
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    DiscoveryRequest:
+      type: object
+      required: [root]
+      properties:
+        root:
+          type: string
+          description: Absolute or relative path to the project root to scan
+          example: "/home/user/my-agent-project"
+        include:
+          type: array
+          items: { type: string }
+          description: Glob patterns to include (default common source patterns)
+          example: ["**/*.py", "**/*.ts", "**/*.js"]
+        exclude:
+          type: array
+          items: { type: string }
+          description: Glob patterns to exclude
+          example: ["**/node_modules/**", "**/.venv/**", "**/tests/**"]
+        frameworks:
+          type: array
+          items:
+            type: string
+            enum: [langchain, crewai, openai_agents, autogen, llamaindex, custom, any]
+          description: Limit detection to specific frameworks (default any)
+        max_agents:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+
+    DiscoveryResponse:
+      type: object
+      required: [agents, scanned_files, duration_ms]
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentDescriptor'
+        scanned_files:
+          type: integer
+        duration_ms:
+          type: integer
+        warnings:
+          type: array
+          items: { type: string }
+
+    AgentDescriptor:
+      type: object
+      required: [id, name, source]
+      properties:
+        id:
+          type: string
+          description: Stable id (hash of path + symbol)
+          example: "agent_a1b2c3d4"
+        name:
+          type: string
+          example: "CustomerSupportAgent"
+        source:
+          type: object
+          required: [path, symbol]
+          properties:
+            path:
+              type: string
+              example: "src/agents/support.py"
+            symbol:
+              type: string
+              example: "CustomerSupportAgent"
+            line_start:
+              type: integer
+            line_end:
+              type: integer
+        framework:
+          type: string
+          example: "langchain"
+        tools:
+          type: array
+          items: { type: string }
+          description: Tool names detected or inferred
+        system_prompt_present:
+          type: boolean
+        entrypoints:
+          type: array
+          items: { type: string }
+          description: e.g. run, invoke, ainvoke, chat
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Heuristic confidence that this is an agent
+        metadata:
+          type: object
+          additionalProperties: true
+
+    GenerateTestsRequest:
+      type: object
+      required: [agents]
+      properties:
+        agents:
+          type: array
+          minItems: 1
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/AgentDescriptor'
+              - type: object
+                required: [id]
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  tools:
+                    type: array
+                    items: { type: string }
+        categories:
+          type: array
+          items:
+            type: string
+            enum:
+              - identification
+              - capability
+              - tool_use
+              - multi_turn
+              - instruction_following
+              - robustness
+              - safety
+              - hallucination
+              - ambiguity
+              - edge_case
+          description: Subset of categories to generate (default balanced starter set)
+        count_per_category:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 3
+        include_library_baseline:
+          type: boolean
+          default: true
+          description: |
+            If true, merge the generated cases with the static baseline
+            library (identification + safety smoke set).
+        seed:
+          type: integer
+          description: Optional seed for deterministic generation
+
+    GenerateTestsResponse:
+      type: object
+      required: [test_cases, count]
+      properties:
+        test_cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestCase'
+        count:
+          type: integer
+        by_category:
+          type: object
+          additionalProperties:
+            type: integer
+        warnings:
+          type: array
+          items: { type: string }
+
+    TestCase:
+      type: object
+      description: |
+        Must conform to schemas/test_case.schema.json from the agent-test-library.
+        Key fields repeated here for convenience.
+      required: [id, name, category, tags, input, expected]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        priority:
+          type: string
+          enum: [critical, high, medium, low]
+        input:
+          type: object
+          required: [messages]
+          properties:
+            messages:
+              type: array
+              items:
+                type: object
+                required: [role, content]
+                properties:
+                  role:
+                    type: string
+                    enum: [system, user, assistant]
+                  content: { type: string }
+            tools:
+              type: array
+              items: {}
+            metadata:
+              type: object
+              additionalProperties: true
+        expected:
+          type: object
+          additionalProperties: true
+        notes: { type: string }
+
+    PackageRequest:
+      type: object
+      required: [test_cases]
+      properties:
+        test_cases:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TestCase'
+        collection_name:
+          type: string
+          default: "Generated Agent Tests"
+        collection_version:
+          type: string
+          default: "1.0.0"
+        include_schema:
+          type: boolean
+          default: true
+        include_readme:
+          type: boolean
+          default: true
+        output_format:
+          type: string
+          enum: [zip, json]
+          default: zip
+          description: |
+            zip = binary application/zip (or base64 if client asks for JSON)
+            json = return the in-memory collection structure only
+
+    PackageResponse:
+      type: object
+      required: [filename, size_bytes, test_case_count]
+      properties:
+        filename:
+          type: string
+          example: "agent-tests-20261107.zip"
+        size_bytes:
+          type: integer
+        test_case_count:
+          type: integer
+        sha256:
+          type: string
+        content_base64:
+          type: string
+          description: Present only when client requested JSON representation of the zip
+        download_url:
+          type: string
+          description: Optional pre-signed or local URL if the server stores the artifact
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+        code:
+          type: string

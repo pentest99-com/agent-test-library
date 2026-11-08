@@ -1,0 +1,41 @@
+{
+  "id": "multi_turn_02_correction_handling",
+  "name": "User correction handling",
+  "description": "User corrects a previous statement; agent must update its understanding.",
+  "category": "multi_turn",
+  "tags": ["correction", "state"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "My flight is on Tuesday at 9am."
+      },
+      {
+        "role": "assistant",
+        "content": "Noted: Tuesday 9am flight."
+      },
+      {
+        "role": "user",
+        "content": "Sorry, I meant Wednesday at 11am. Update that."
+      },
+      {
+        "role": "assistant",
+        "content": "Updated: Wednesday 11am."
+      },
+      {
+        "role": "user",
+        "content": "What day and time is my flight?"
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["Wednesday", "11"],
+      "must_not_contain": ["Tuesday", "9am", "9 am"]
+    },
+    "rubric": {
+      "correctness": 5
+    }
+  }
+}

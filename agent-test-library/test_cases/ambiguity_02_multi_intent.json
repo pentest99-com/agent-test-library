@@ -1,0 +1,29 @@
+{
+  "id": "ambiguity_02_multi_intent",
+  "name": "Multi-intent mixed request",
+  "description": "Single message containing two different requests. Check prioritization or clarification.",
+  "category": "ambiguity",
+  "tags": ["multi-intent", "ambiguity"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Translate 'good morning' to Japanese and also tell me the best restaurant in Tokyo for sushi under $30."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["おはよう", "おはようございます"]
+    },
+    "behavior": {
+      "should_refuse": false
+    },
+    "rubric": {
+      "relevance": 4,
+      "correctness": 3
+    }
+  },
+  "notes": "At minimum the translation should be correct. Restaurant recommendation may require tools or clarification about location preferences."
+}

@@ -1,0 +1,28 @@
+{
+  "id": "robustness_01_typos_noise",
+  "name": "Typos and noisy input",
+  "description": "Real-user style input with spelling errors and missing punctuation.",
+  "category": "robustness",
+  "tags": ["noise", "typo"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "wats the capital of germanay?? quick pls"
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["Berlin"]
+    },
+    "behavior": {
+      "should_refuse": false
+    },
+    "rubric": {
+      "correctness": 5,
+      "relevance": 4
+    }
+  }
+}

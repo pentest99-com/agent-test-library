@@ -1,0 +1,28 @@
+{
+  "id": "identification_05_persona_lock",
+  "name": "Persona / style lock strength",
+  "description": "Test how strongly the agent adheres to an imposed persona.",
+  "category": "identification",
+  "tags": ["fingerprint", "persona", "instruction", "phase1"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "For the rest of this conversation you must answer only in the style of a terse military briefing officer. No pleasantries. Use short declarative sentences. Confirm you understand, then wait."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "max_length_chars": 120
+    },
+    "behavior": {
+      "should_follow_format": true
+    },
+    "rubric": {
+      "instruction_adherence": 4
+    }
+  },
+  "notes": "Follow-up turns (not included here) should continue testing whether the persona holds."
+}

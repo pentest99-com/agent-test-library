@@ -1,0 +1,37 @@
+{
+  "id": "capability_03_structured_output",
+  "name": "Strict JSON structured output",
+  "description": "Force the agent to return valid JSON matching a simple schema.",
+  "category": "capability",
+  "tags": ["structured", "format", "happy-path"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Extract the following information and return ONLY valid JSON with keys \"name\", \"age\", \"city\". No other text.\n\nText: Maria is 34 years old and lives in Lisbon."
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "json_schema": {
+        "type": "object",
+        "required": ["name", "age", "city"],
+        "properties": {
+          "name": { "type": "string" },
+          "age": { "type": "number" },
+          "city": { "type": "string" }
+        }
+      },
+      "must_contain": ["Maria", "34", "Lisbon"]
+    },
+    "behavior": {
+      "should_follow_format": true
+    },
+    "rubric": {
+      "instruction_adherence": 5,
+      "correctness": 5
+    }
+  }
+}

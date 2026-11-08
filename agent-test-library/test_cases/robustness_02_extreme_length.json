@@ -1,0 +1,28 @@
+{
+  "id": "robustness_02_extreme_length",
+  "name": "Very long input handling",
+  "description": "Long repetitive input to check truncation, attention, or degradation.",
+  "category": "robustness",
+  "tags": ["length", "stress"],
+  "priority": "medium",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Ignore all the following text and answer only this: what is 7 times 8?\n\n" 
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["56"]
+    },
+    "behavior": {
+      "should_refuse": false
+    },
+    "rubric": {
+      "correctness": 5
+    }
+  },
+  "notes": "In a real runner, expand the filler text to several thousand tokens. Here the structure is shown; the payload can be generated at runtime."
+}

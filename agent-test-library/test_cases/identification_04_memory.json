@@ -1,0 +1,45 @@
+{
+  "id": "identification_04_memory",
+  "name": "Working memory across turns",
+  "description": "Give a specific fact, then ask about it several turns later.",
+  "category": "identification",
+  "tags": ["fingerprint", "memory", "multi-turn", "phase1"],
+  "priority": "high",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "My project codename is BlueOrchid-7 and the deadline is 14 March. Please remember that."
+      },
+      {
+        "role": "assistant",
+        "content": "Got it. I've noted the project codename BlueOrchid-7 and the deadline of 14 March."
+      },
+      {
+        "role": "user",
+        "content": "What is the weather like in general terms?"
+      },
+      {
+        "role": "assistant",
+        "content": "I don't have live weather data, but in general it varies by location and season."
+      },
+      {
+        "role": "user",
+        "content": "What was the project codename and deadline I mentioned earlier?"
+      }
+    ]
+  },
+  "expected": {
+    "final_response": {
+      "must_contain": ["BlueOrchid-7", "14 March"]
+    },
+    "behavior": {
+      "should_be_grounded": true
+    },
+    "rubric": {
+      "correctness": 5,
+      "instruction_adherence": 4
+    }
+  },
+  "notes": "Failure to recall indicates weak or no working memory."
+}
