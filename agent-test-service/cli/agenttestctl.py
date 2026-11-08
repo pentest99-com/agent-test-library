@@ -114,6 +114,255 @@ def _extract_tools(text: str) -> list[str]:
     return tools[:20]
 
 
+# ---------------------------------------------------------------------------
+# Framework & version detection
+# ---------------------------------------------------------------------------
+
+# package name (normalised, lowercase, "_"->"-") -> (framework label, ecosystem)
+KNOWN_PACKAGES: dict[str, tuple[str, str]] = {
+    # Python
+    "langchain": ("langchain", "python"),
+    "langchain-core": ("langchain", "python"),
+    "langchain-openai": ("langchain", "python"),
+    "langchain-anthropic": ("langchain", "python"),
+    "langgraph": ("langgraph", "python"),
+    "crewai": ("crewai", "python"),
+    "pyautogen": ("autogen", "python"),
+    "autogen": ("autogen", "python"),
+    "autogen-agentchat": ("autogen", "python"),
+    "llama-index": ("llamaindex", "python"),
+    "llama-index-core": ("llamaindex", "python"),
+    "openai": ("openai-sdk", "python"),
+    "openai-agents": ("openai-agents", "python"),
+    "anthropic": ("anthropic-sdk", "python"),
+    "claude-agent-sdk": ("claude-agent-sdk", "python"),
+    "google-adk": ("google-adk", "python"),
+    "google-generativeai": ("google-genai", "python"),
+    "google-genai": ("google-genai", "python"),
+    "pydantic-ai": ("pydantic-ai", "python"),
+    "semantic-kernel": ("semantic-kernel", "python"),
+    "haystack-ai": ("haystack", "python"),
+    "smolagents": ("smolagents", "python"),
+    "dspy": ("dspy", "python"),
+    "dspy-ai": ("dspy", "python"),
+    "litellm": ("litellm", "python"),
+    "fastapi": ("fastapi", "python"),
+    "flask": ("flask", "python"),
+    # JavaScript / TypeScript
+    "langchain@js": ("langchain", "node"),
+    "@langchain/core": ("langchain", "node"),
+    "@langchain/langgraph": ("langgraph", "node"),
+    "openai@js": ("openai-sdk", "node"),
+    "@openai/agents": ("openai-agents", "node"),
+    "@anthropic-ai/sdk": ("anthropic-sdk", "node"),
+    "@anthropic-ai/claude-agent-sdk": ("claude-agent-sdk", "node"),
+    "ai": ("vercel-ai-sdk", "node"),
+    "llamaindex": ("llamaindex", "node"),
+    "@mastra/core": ("mastra", "node"),
+    "@google/generative-ai": ("google-genai", "node"),
+    "@google/genai": ("google-genai", "node"),
+    "express": ("express", "node"),
+    "next": ("nextjs", "node"),
+}
+# Ambiguous names exist in both ecosystems; resolved by ecosystem when looked up.
+_AMBIGUOUS = {"langchain", "openai"}
+
+# import-statement hints used as source-level evidence
+IMPORT_HINTS = {
+    "langchain": r"(?:from|import)\s+langchain|@langchain/",
+    "langgraph": r"(?:from|import)\s+langgraph|@langchain/langgraph",
+    "crewai": r"(?:from|import)\s+crewai",
+    "autogen": r"(?:from|import)\s+autogen",
+    "llamaindex": r"(?:from|import)\s+llama_index|from ['\"]llamaindex['\"]",
+    "openai-sdk": r"(?:from|import)\s+openai\b|from ['\"]openai['\"]",
+    "openai-agents": r"from\s+agents\s+import|@openai/agents",
+    "anthropic-sdk": r"(?:from|import)\s+anthropic\b|@anthropic-ai/sdk",
+    "claude-agent-sdk": r"claude_agent_sdk|claude-agent-sdk",
+    "google-adk": r"google\.adk",
+    "pydantic-ai": r"(?:from|import)\s+pydantic_ai",
+    "vercel-ai-sdk": r"from ['\"]ai['\"]",
+}
+
+
+def _norm(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name.strip().lower())
+
+
+def _lookup(name: str, ecosystem: str):
+    n = _norm(name) if ecosystem == "python" else name.strip().lower()
+    if ecosystem == "node" and n in _AMBIGUOUS:
+        n = n + "@js"
+    hit = KNOWN_PACKAGES.get(n)
+    if hit and hit[1] == ecosystem:
+        return hit
+    return None
+
+
+def _toml_load(path: Path) -> dict[str, Any]:
+    try:
+        import tomllib  # Python 3.11+
+        return tomllib.loads(path.read_text(encoding="utf-8", errors="ignore"))
+    except Exception:
+        return {}
+
+
+def _read(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return ""
+
+
+_REQ_RE = re.compile(r"^\s*([A-Za-z0-9_.\-]+)\s*(?:\[[^\]]*\])?\s*((?:[<>=!~]=?|===)[^;#\s,]*(?:\s*,\s*(?:[<>=!~]=?)[^;#\s,]*)*)?")
+
+
+def _parse_req_line(line: str):
+    line = line.split("#", 1)[0].strip()
+    if not line or line.startswith(("-", "git+", "http")):
+        return None
+    m = _REQ_RE.match(line)
+    return (m.group(1), (m.group(2) or "").replace(" ", "") or None) if m else None
+
+
+def detect_frameworks(root: str | Path, exclude: list[str] | None = None) -> dict[str, Any]:
+    """Detect agent frameworks/SDKs and their versions from dependency files.
+
+    Reports, per framework: declared version spec (what the project asks for),
+    locked version (what a lockfile pins), the files that say so, and how many
+    source files import it. Installed environment is NOT inspected.
+    """
+    root = Path(root).resolve()
+    exclude = exclude or DEFAULT_EXCLUDE
+    found: dict[str, dict[str, Any]] = {}
+    runtimes: dict[str, Any] = {}
+
+    def add(pkg: str, eco: str, kind: str, version: str | None, src: Path):
+        hit = _lookup(pkg, eco)
+        if not hit:
+            return
+        label = hit[0]
+        e = found.setdefault(
+            f"{label}|{eco}",
+            {"framework": label, "ecosystem": eco, "packages": {}, "sources": [],
+             "import_files": 0},
+        )
+        pk = e["packages"].setdefault(pkg, {"declared": None, "locked": None})
+        if version:
+            pk[kind] = version
+        rel = str(src.relative_to(root)).replace("\\", "/")
+        if rel not in e["sources"]:
+            e["sources"].append(rel)
+
+    def walk(patterns: list[str]):
+        for pat in patterns:
+            for f in root.glob(pat):
+                if f.is_file() and not _should_exclude(f, exclude, root):
+                    yield f
+
+    # --- Python: requirements*.txt
+    for f in walk(["requirements*.txt", "**/requirements*.txt"]):
+        for line in _read(f).splitlines():
+            r = _parse_req_line(line)
+            if r:
+                add(r[0], "python", "declared", r[1], f)
+    # --- Python: pyproject.toml
+    for f in walk(["pyproject.toml", "**/pyproject.toml"]):
+        d = _toml_load(f)
+        proj = d.get("project", {})
+        deps = list(proj.get("dependencies", []))
+        for grp in (proj.get("optional-dependencies") or {}).values():
+            deps += grp
+        for grp in (d.get("dependency-groups") or {}).values():
+            deps += [x for x in grp if isinstance(x, str)]
+        for dep in deps:
+            r = _parse_req_line(dep)
+            if r:
+                add(r[0], "python", "declared", r[1], f)
+        poetry = d.get("tool", {}).get("poetry", {})
+        for name, spec in {**poetry.get("dependencies", {}), **poetry.get("dev-dependencies", {})}.items():
+            if name.lower() == "python":
+                runtimes["python"] = spec if isinstance(spec, str) else spec.get("version")
+                continue
+            v = spec if isinstance(spec, str) else (spec or {}).get("version")
+            add(name, "python", "declared", v, f)
+        if proj.get("requires-python"):
+            runtimes["python"] = proj["requires-python"]
+    # --- Python: lockfiles (poetry.lock / uv.lock share [[package]] name/version)
+    for f in walk(["poetry.lock", "uv.lock", "**/poetry.lock", "**/uv.lock"]):
+        d = _toml_load(f)
+        for pkg in d.get("package", []):
+            add(pkg.get("name", ""), "python", "locked", pkg.get("version"), f)
+    # --- Python: Pipfile.lock
+    for f in walk(["Pipfile.lock"]):
+        try:
+            d = json.loads(_read(f))
+        except ValueError:
+            continue
+        for sect in ("default", "develop"):
+            for name, info in (d.get(sect) or {}).items():
+                v = (info.get("version") or "").lstrip("=") or None
+                add(name, "python", "locked", v, f)
+    for f in walk([".python-version"]):
+        runtimes.setdefault("python", _read(f).strip())
+
+    # --- Node: package.json / package-lock.json
+    for f in walk(["package.json", "**/package.json"]):
+        try:
+            d = json.loads(_read(f))
+        except ValueError:
+            continue
+        for sect in ("dependencies", "devDependencies", "peerDependencies"):
+            for name, v in (d.get(sect) or {}).items():
+                add(name, "node", "declared", v, f)
+        if isinstance(d.get("engines"), dict) and d["engines"].get("node"):
+            runtimes["node"] = d["engines"]["node"]
+    for f in walk(["package-lock.json", "**/package-lock.json"]):
+        try:
+            d = json.loads(_read(f))
+        except ValueError:
+            continue
+        for key, info in (d.get("packages") or {}).items():
+            if key.startswith("node_modules/"):
+                add(key.split("node_modules/")[-1], "node", "locked", info.get("version"), f)
+
+    # --- Source-level evidence: who actually imports what
+    src_files = [
+        f for pat in DEFAULT_INCLUDE for f in root.glob(pat)
+        if f.is_file() and not _should_exclude(f, exclude, root)
+    ]
+    imported: dict[tuple[str, str], int] = {}
+    for f in src_files:
+        text = _read(f)
+        eco = "python" if f.suffix == ".py" else "node"
+        for label, rx in IMPORT_HINTS.items():
+            if re.search(rx, text):
+                imported[(label, eco)] = imported.get((label, eco), 0) + 1
+    for (label, eco), n in imported.items():
+        e = found.setdefault(
+            f"{label}|{eco}",
+            {"framework": label, "ecosystem": eco, "packages": {}, "sources": [],
+             "import_files": 0},
+        )
+        e["import_files"] = n
+
+    frameworks = []
+    for e in found.values():
+        vers = [v for p in e["packages"].values() for v in (p["locked"], p["declared"]) if v]
+        e["version"] = next(
+            (p["locked"] for p in e["packages"].values() if p["locked"]),
+            next((p["declared"] for p in e["packages"].values() if p["declared"]), None),
+        )
+        e["version_source"] = (
+            "locked" if any(p["locked"] for p in e["packages"].values())
+            else "declared" if vers else None
+        )
+        e["in_dependencies"] = bool(e["packages"])
+        e["used_in_source"] = e["import_files"] > 0
+        frameworks.append(e)
+    frameworks.sort(key=lambda e: (-e["import_files"], e["framework"]))
+    return {"frameworks": frameworks, "runtimes": runtimes}
+
+
 def discover_agents(
     root: str | Path,
     include: list[str] | None = None,
@@ -167,7 +416,9 @@ def discover_agents(
         for name, line, kind in matches:
             raw = f"{rel}:{name}:{line}"
             aid = "agent_" + hashlib.sha1(raw.encode()).hexdigest()[:8]
-            confidence = 0.5
+            # "file" matches are weak guesses (a file merely mentions tools or a
+            # system prompt), so they start lower than class/function matches.
+            confidence = 0.3 if kind == "file" else 0.5
             if kind == "class":
                 confidence += 0.25
             if framework != "custom":
@@ -204,8 +455,26 @@ def discover_agents(
     # highest confidence first
     agents.sort(key=lambda a: a["confidence"], reverse=True)
 
+    # Discovery is name/file heuristics only: results are CANDIDATES, not facts.
+    if agents:
+        weak = sum(1 for a in agents if a["metadata"].get("kind") == "file")
+        warnings.append(
+            f"HEURISTIC RESULT: {len(agents)} candidate(s) from name/file matching "
+            f"({weak} weak file-level guesses). Verify against the project's own "
+            "source of truth (agent registry/catalog/docs) before reporting a count; "
+            "the scan can both over-count (non-agents) and miss data-driven agents."
+        )
+
+    fw = detect_frameworks(root, exclude)
+    for a in agents:
+        if a["framework"] == "custom" and fw["frameworks"]:
+            a["metadata"]["project_frameworks"] = [
+                f["framework"] for f in fw["frameworks"] if f["used_in_source"]
+            ]
     return {
         "agents": agents,
+        "frameworks": fw["frameworks"],
+        "runtimes": fw["runtimes"],
         "scanned_files": len(files),
         "duration_ms": int((time.time() - start) * 1000),
         "warnings": warnings,
@@ -629,6 +898,11 @@ def cmd_all(args: argparse.Namespace) -> int:
                 "discovery": {
                     "agents": len(agents),
                     "scanned_files": disc["scanned_files"],
+                    "frameworks": [
+                        {k: f[k] for k in ("framework", "version", "version_source", "import_files")}
+                        for f in disc["frameworks"]
+                    ],
+                    "runtimes": disc["runtimes"],
                 },
                 "generated": gen["count"],
                 "by_category": gen["by_category"],

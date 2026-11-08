@@ -59,13 +59,36 @@ Do these steps now, without asking me questions:
      generate-tests --agents agents-discovered.json --out ./generated-tests
      package        --tests ./generated-tests --out ./agent-tests-output.zip
 
-4. Verify: unzip -l agent-tests-output.zip
+4. VERIFY DISCOVERY before reporting anything (mandatory). Discovery is a name/file
+   heuristic: its "agents" are CANDIDATES, not facts. It can over-count (any file that
+   mentions tools or a system prompt) and miss agents declared as data (catalogs,
+   registries, config, dicts) rather than classes named *Agent.
+   a. Find this project's source of truth for agents (agent registry/catalog module,
+      config, CLAUDE.md/README/docs) and note how many agents it defines.
+   b. Open each candidate in agents-discovered.json (source.path:line) and mark it
+      real agent / not an agent. Check the "kind" in metadata: "file" = weak guess.
+   c. If the verified list differs from discovery, do NOT report discovery's count.
+      Write a corrected agents JSON (same shape as discovery output; real names, tools,
+      system_prompt_present) and re-run:
+        generate-tests --agents corrected-agents.json --out ./generated-tests
+        package --tests ./generated-tests --out ./agent-tests-output.zip --name "Agent Tests"
+   d. Sanity-check the numbers (agents x tests) against what you know of the project.
+
+5. Check the zip: unzip -l agent-tests-output.zip
    Must contain collection.json, schemas/test_case.schema.json, test_cases/*.json, README.md
 
-5. Report: zip path, agents discovered, test case count, warnings, exact commands run.
+6. Report, separating verified from unverified:
+   - zip path
+   - agents: N verified (names) vs M candidates discovery returned; what was missed/wrong
+   - frameworks/SDKs and versions (from the discovery output's "frameworks" and "runtimes":
+     version_source says whether it is locked (lockfile) or only declared (a range);
+     import_files=0 means it is in dependencies but never imported)
+   - test case count, warnings, exact commands run
+   - flag anything suspicious in your FIRST report; never state an unchecked count as fact
 
 Rules:
 - Python 3.9+ stdlib only; no pip installs.
+- Observe before you claim: open the code before saying something is or is not an agent.
 - Do not modify this repo's source code or the pack's schema. Only add agent-tests-output.zip (and remove any temp files you create).
 - Do not commit or push anything.
 - If no agents are found, still package the default generated set.
@@ -82,6 +105,16 @@ cd /path/to/your/repo
 python3 /tmp/agent-test-library/agent-test-service/cli/agenttestctl.py all \
   --root . --out ./agent-tests-output.zip --name "Agent Tests"
 ```
+
+---
+
+## Framework & version detection
+
+`discovery` also reports what the target project is built on (`frameworks` and `runtimes` in its output). It reads `requirements*.txt`, `pyproject.toml` (PEP 621, Poetry, dependency groups), `poetry.lock`, `uv.lock`, `Pipfile.lock`, `package.json`, `package-lock.json`, `.python-version`, and counts source files that import each framework.
+
+Detected: LangChain, LangGraph, CrewAI, AutoGen, LlamaIndex, OpenAI SDK and Agents SDK, Anthropic SDK, Claude Agent SDK, Google ADK/GenAI, PydanticAI, Semantic Kernel, Haystack, smolagents, DSPy, LiteLLM, Vercel AI SDK, Mastra, plus FastAPI/Flask/Express/Next.js.
+
+Per framework you get `version` and `version_source`: `locked` (exact, from a lockfile) or `declared` (a range from the manifest). `import_files: 0` means it is a dependency but never imported. The installed environment is not inspected, so the running version can differ from a declared range.
 
 ---
 
