@@ -10,8 +10,8 @@ This is a consumable test-case library plus a small service/CLI. It does **not**
 
 | Artifact | Purpose |
 |----------|---------|
-| `agent-test-library.zip` | Static baseline of 34 characterization & break test cases (JSON) |
-| `agent-test-service.zip` | API contracts + CLI that discovers agents, generates tests, and packages them |
+| `agent-test-library/` | Static baseline of 34 characterization & break test cases (JSON) |
+| `agent-test-service/` | API contracts + stdlib CLI that discovers agents, generates tests, and packages them |
 | Prompt files | Ready-to-paste instructions so a coding agent can install and run the full pipeline |
 
 **Output of the pipeline:** a zip shaped like this:
@@ -29,51 +29,59 @@ Your app loads that zip and executes the cases.
 
 ## Quick start
 
-### Option A — one command (CLI)
+### Option A — paste one prompt into your coding agent (recommended)
+
+From the root of the repo you want to test, paste this into Claude Code, Cursor, Codex, etc. It downloads this pack, scans your repo, and writes `agent-tests-output.zip`:
+
+```
+Download the Agent Test Pack and run it end-to-end on THIS repository to produce a shareable zip of agent test cases.
+
+Do these steps now, without asking me questions:
+
+1. Fetch the pack into a temp directory OUTSIDE this repo (so it isn't scanned or committed):
+     PACK="$(mktemp -d)/agent-test-library"
+     git clone --depth 1 https://github.com/pentest99-com/agent-test-library "$PACK"
+   (If git is unavailable: download https://github.com/pentest99-com/agent-test-library/archive/refs/heads/main.zip and unzip it.)
+
+2. Confirm these exist in $PACK:
+   - agent-test-service/cli/agenttestctl.py
+   - agent-test-library/schemas/test_case.schema.json
+   - agent-test-library/test_cases/
+
+3. From the root of THIS repo, run the full pipeline:
+     python3 "$PACK/agent-test-service/cli/agenttestctl.py" all \
+       --root . \
+       --out ./agent-tests-output.zip \
+       --name "Agent Tests" \
+       --count-per-category 2
+   If `all` fails, run the steps separately:
+     discovery      --root . --out agents-discovered.json
+     generate-tests --agents agents-discovered.json --out ./generated-tests
+     package        --tests ./generated-tests --out ./agent-tests-output.zip
+
+4. Verify: unzip -l agent-tests-output.zip
+   Must contain collection.json, schemas/test_case.schema.json, test_cases/*.json, README.md
+
+5. Report: zip path, agents discovered, test case count, warnings, exact commands run.
+
+Rules:
+- Python 3.9+ stdlib only; no pip installs.
+- Do not modify this repo's source code or the pack's schema. Only add agent-tests-output.zip (and remove any temp files you create).
+- Do not commit or push anything.
+- If no agents are found, still package the default generated set.
+- The pack contains test DEFINITIONS only; do not run them against any live agent.
+```
+
+(Same prompt as a file: [`PROMPT_SHORT.txt`](PROMPT_SHORT.txt) / [`PROMPT_INSTALL_AND_RUN.md`](PROMPT_INSTALL_AND_RUN.md).)
+
+### Option B — run the CLI yourself
 
 ```bash
-unzip -o agent-test-service.zip
-unzip -o agent-test-library.zip
-chmod +x agent-test-service/cli/agenttestctl.py
-
-python agent-test-service/cli/agenttestctl.py all \
-  --root . \
-  --out ./agent-tests-output.zip \
-  --name "Agent Tests"
+git clone --depth 1 https://github.com/pentest99-com/agent-test-library /tmp/agent-test-library
+cd /path/to/your/repo
+python3 /tmp/agent-test-library/agent-test-service/cli/agenttestctl.py all \
+  --root . --out ./agent-tests-output.zip --name "Agent Tests"
 ```
-
-### Option B — give this prompt to a coding agent
-
-```
-Install and run the Agent Test Service end-to-end.
-
-1. Unpack if needed:
-   unzip -o agent-test-service.zip
-   unzip -o agent-test-library.zip
-   chmod +x agent-test-service/cli/agenttestctl.py
-
-2. Confirm:
-   agent-test-service/cli/agenttestctl.py
-   agent-test-library/schemas/test_case.schema.json
-   agent-test-library/test_cases/
-
-3. Run:
-   python agent-test-service/cli/agenttestctl.py all \
-     --root . \
-     --out ./agent-tests-output.zip \
-     --name "Agent Tests" \
-     --count-per-category 2
-
-4. Verify with: unzip -l agent-tests-output.zip
-   Must contain collection.json, schemas/, test_cases/, README.md
-
-5. Report: zip path, agents found, test count, warnings, commands run.
-
-Rules: stdlib only, do not change the schema, package even if no agents found.
-Start now.
-```
-
-(Full version: `agent-test-service/PROMPT_INSTALL_AND_RUN.md`)
 
 ---
 
@@ -146,10 +154,10 @@ Every case is JSON and matches `schemas/test_case.schema.json`.
 ## Layout
 
 ```
-artifacts/
+agent-test-library/   (repo root)
 ├── README.md                          ← this file
-├── agent-test-library.zip             ← static baseline cases
-├── agent-test-service.zip             ← contracts + CLI + prompts
+├── PROMPT_SHORT.txt                   ← paste-into-agent prompt
+├── PROMPT_INSTALL_AND_RUN.md
 ├── agent-test-library/
 │   ├── collection.json
 │   ├── schemas/test_case.schema.json
@@ -161,8 +169,6 @@ artifacts/
     │   └── CONTRACTS.md
     ├── cli/
     │   └── agenttestctl.py
-    ├── PROMPT_SHORT.txt
-    ├── PROMPT_INSTALL_AND_RUN.md
     └── README.md
 ```
 

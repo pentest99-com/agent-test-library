@@ -67,4 +67,4 @@ README.md                ← this file
 
 ## License / usage
 
-Released under the [MIT License](LICENSE). Modify, extend, and version as needed for your application.
+Released under the [MIT License](../LICENSE). Modify, extend, and version as needed for your application.
